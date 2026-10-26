@@ -7,9 +7,23 @@ var products = new List<Producto>();
 
 using var playwright = await Playwright.CreateAsync();
 await using var browser = await playwright.Chromium.LaunchAsync(
-    new BrowserTypeLaunchOptions { Headless = false, Channel = "msedge", SlowMo = 5_000 });
+    new BrowserTypeLaunchOptions { Headless = false, Channel = "msedge", SlowMo = 3_000 });
 
 var page = await browser.NewPageAsync();
+
+// await page.RouteAsync("**/*", async route =>
+//     {
+//         var resourceType = route.Request.ResourceType;
+//         if (resourceType is "document" or "script" or "fetch" or "xhr")
+//         {
+//             await route.ContinueAsync();
+//         }
+//         else
+//         {
+//             await route.AbortAsync();
+//         }
+//     });
+
 await page.GotoAsync($"{baseUrl}?page=1", new PageGotoOptions
 {
     WaitUntil = WaitUntilState.DOMContentLoaded
@@ -87,15 +101,23 @@ static async Task ScrapePagesAsync(
             WaitUntil = WaitUntilState.DOMContentLoaded
         });
 
-        var cards = page.Locator(productSelector);
+        await page.EvaluateAsync(
+            "window.scrollTo(0, 1000)");
 
-        await cards.Last.WaitForAsync(new LocatorWaitForOptions
+        var pagination = page.Locator("button[class*='fetchMoreOpButton']");
+        await pagination.WaitForAsync(new LocatorWaitForOptions
         {
-            State = WaitForSelectorState.Attached,
+            State = WaitForSelectorState.Visible,
             Timeout = 30_000
         });
 
+        await pagination.ScrollIntoViewIfNeededAsync();
+
+        var cards = page.Locator(productSelector);
+
         var cardLocators = await cards.AllAsync();
+
+        System.Console.WriteLine(cardLocators.Count);
 
         foreach (var card in cardLocators)
         {
@@ -111,6 +133,11 @@ static async Task ScrapePagesAsync(
             }
 
             var brandLocator = card.Locator(".vtex-product-summary-2-x-productBrandName");
+            await brandLocator.WaitForAsync(
+                new LocatorWaitForOptions
+                {
+                    State = WaitForSelectorState.Attached
+                });
             var brand = await brandLocator.CountAsync() > 0
                 ? await brandLocator.InnerTextAsync()
                 : string.Empty;
