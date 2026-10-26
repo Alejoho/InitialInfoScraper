@@ -7,7 +7,7 @@ var products = new List<Producto>();
 
 using var playwright = await Playwright.CreateAsync();
 await using var browser = await playwright.Chromium.LaunchAsync(
-    new BrowserTypeLaunchOptions { Headless = true });
+    new BrowserTypeLaunchOptions { Headless = false, Channel = "msedge", SlowMo = 5_000 });
 
 var page = await browser.NewPageAsync();
 await page.GotoAsync($"{baseUrl}?page=1", new PageGotoOptions
@@ -30,11 +30,21 @@ int pageCount;
 
 if (!pageCountMatch.Success)
 {
-    var pageNumbers = await page
+    var pageButtons = await page
         .Locator("button[class*='fetchMoreOptionItem']")
-        .EvaluateAllAsync<int[]>("buttons => buttons.map(button => Number(button.getAttribute('value'))).filter(Number.isInteger)");
+        .AllAsync();
+    var pageNumbers = new List<int>();
 
-    if (pageNumbers.Length == 0)
+    foreach (var button in pageButtons)
+    {
+        var value = await button.GetAttributeAsync("value");
+        if (int.TryParse(value, out var number))
+        {
+            pageNumbers.Add(number);
+        }
+    }
+
+    if (pageNumbers.Count == 0)
     {
         throw new InvalidOperationException("No se pudo determinar el total de páginas desde la navegación.");
     }
@@ -78,42 +88,64 @@ static async Task ScrapePagesAsync(
         });
 
         var cards = page.Locator(productSelector);
-        await cards.First.WaitForAsync(new LocatorWaitForOptions
+
+        await cards.Last.WaitForAsync(new LocatorWaitForOptions
         {
             State = WaitForSelectorState.Attached,
             Timeout = 30_000
         });
 
-        var pageProducts = await cards.EvaluateAllAsync<Producto[]>(
-            """
-            cards => cards.map(card => ({
-                Nombre: card.getAttribute('data-cnstrc-item-name')?.trim() ?? '',
-                Marca: card.querySelector('.vtex-product-summary-2-x-productBrandName')?.textContent?.trim() ?? '',
-                Url: card.querySelector('a.vtex-product-summary-2-x-clearLink')?.href ?? ''
-            }))
-            """);
+        var cardLocators = await cards.AllAsync();
 
-        foreach (var product in pageProducts)
+        foreach (var card in cardLocators)
         {
-            if (string.IsNullOrWhiteSpace(product.Nombre) ||
-                string.IsNullOrWhiteSpace(product.Marca) ||
-                string.IsNullOrWhiteSpace(product.Url))
+            var name = await card.GetAttributeAsync("data-cnstrc-item-name");
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                var productName = card.Locator(".vtex-product-summary-2-x-productBrand");
+
+                if (await productName.CountAsync() > 0)
+                {
+                    name = await productName.InnerTextAsync();
+                }
+            }
+
+            var brandLocator = card.Locator(".vtex-product-summary-2-x-productBrandName");
+            var brand = await brandLocator.CountAsync() > 0
+                ? await brandLocator.InnerTextAsync()
+                : string.Empty;
+
+            var href = await card
+                .Locator("a.vtex-product-summary-2-x-clearLink")
+                .GetAttributeAsync("href");
+            var url = string.IsNullOrWhiteSpace(href)
+                ? string.Empty
+                : new Uri(new Uri(page.Url), href).AbsoluteUri;
+
+            name = name?.Trim();
+            brand = brand.Trim();
+
+            if (string.IsNullOrWhiteSpace(name) ||
+                string.IsNullOrWhiteSpace(brand) ||
+                string.IsNullOrWhiteSpace(url))
             {
                 throw new InvalidOperationException(
-                    $"Faltan datos de un producto en la página {pageNumber}: {JsonSerializer.Serialize(product)}");
+                    $"Faltan datos de un producto en la página {pageNumber}: " +
+                    JsonSerializer.Serialize(new { Nombre = name, Marca = brand, Url = url }));
             }
 
             products.Add(new Producto
             {
-                Nombre = product.Nombre,
-                Marca = product.Marca,
-                Url = product.Url
+                Nombre = name,
+                Marca = brand,
+                Url = url
             });
         }
 
-        Console.WriteLine($"Página {pageNumber}/{pageCount}: {pageProducts.Length} productos");
+        Console.WriteLine($"Página {pageNumber}/{pageCount}: {cardLocators.Count} productos");
     }
 }
+
 
 public sealed class Producto
 {
