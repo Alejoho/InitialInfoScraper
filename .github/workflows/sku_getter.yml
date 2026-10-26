@@ -1,0 +1,37 @@
+name: Ejecutar sku getter
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Construir proyecto
+        run: dotnet build SkuGetter/SkuGetter.csproj --configuration Release
+
+      - name: Instalar Chromium y dependencias
+        run: pwsh ./SkuGetter/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Ejecutar sku getter
+        run: dotnet run --no-build --configuration Release --project SkuGetter.csproj
+        working-directory: SkuGetter
+
+      - name: Publicar productos_completos.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: productos_completos
+          path: SkuGetter/productos_completos.json
+          if-no-files-found: error
