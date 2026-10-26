@@ -11,18 +11,18 @@ await using var browser = await playwright.Chromium.LaunchAsync(
 
 var page = await browser.NewPageAsync();
 
-await page.RouteAsync("**/*", async route =>
-    {
-        var resourceType = route.Request.ResourceType;
-        if (resourceType is "document" or "script" or "fetch" or "xhr")
-        {
-            await route.ContinueAsync();
-        }
-        else
-        {
-            await route.AbortAsync();
-        }
-    });
+// await page.RouteAsync("**/*", async route =>
+//     {
+//         var resourceType = route.Request.ResourceType;
+//         if (resourceType is "document" or "script" or "fetch" or "xhr")
+//         {
+//             await route.ContinueAsync();
+//         }
+//         else
+//         {
+//             await route.AbortAsync();
+//         }
+//     });
 
 await page.GotoAsync($"{baseUrl}?page=1", new PageGotoOptions
 {
