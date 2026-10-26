@@ -50,10 +50,17 @@ await ScrapePagesAsync(page, pageCount, baseUrl, productSelector, products);
 
 Console.WriteLine($"Páginas procesadas: {pageCount}");
 Console.WriteLine($"Productos obtenidos: {products.Count}");
-Console.WriteLine(JsonSerializer.Serialize(products, new JsonSerializerOptions
+var json = JsonSerializer.Serialize(products, new JsonSerializerOptions
 {
     WriteIndented = true
-}));
+});
+var outputPath = Path.Combine(Environment.CurrentDirectory, "productos.json");
+await File.WriteAllTextAsync(outputPath, json);
+
+Console.WriteLine($"Archivo JSON guardado en: {outputPath}");
+
+return;
+
 
 
 static async Task ScrapePagesAsync(
@@ -77,7 +84,7 @@ static async Task ScrapePagesAsync(
             Timeout = 30_000
         });
 
-        var pageProducts = await cards.EvaluateAllAsync<ProductData[]>(
+        var pageProducts = await cards.EvaluateAllAsync<Producto[]>(
             """
             cards => cards.map(card => ({
                 Nombre: card.getAttribute('data-cnstrc-item-name')?.trim() ?? '',
@@ -96,18 +103,21 @@ static async Task ScrapePagesAsync(
                     $"Faltan datos de un producto en la página {pageNumber}: {JsonSerializer.Serialize(product)}");
             }
 
-            products.Add(new Producto(product.Nombre, product.Marca, product.Url));
+            products.Add(new Producto
+            {
+                Nombre = product.Nombre,
+                Marca = product.Marca,
+                Url = product.Url
+            });
         }
 
         Console.WriteLine($"Página {pageNumber}/{pageCount}: {pageProducts.Length} productos");
     }
 }
 
-public sealed class Producto(string nombre, string marca, string url)
+public sealed class Producto
 {
-    public string Nombre { get; } = nombre;
-    public string Marca { get; } = marca;
-    public string Url { get; } = url;
+    public string Nombre { get; set; } = string.Empty;
+    public string Marca { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
 }
-
-internal sealed record ProductData(string Nombre, string Marca, string Url);
