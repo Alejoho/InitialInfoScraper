@@ -3,7 +3,7 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-productos.json
+InitialInfoScraper/productos.json
 
 # dotenv files
 .env
