@@ -21,19 +21,16 @@ jobs:
 
       - name: Construir proyecto
         run: dotnet build InitialInfoScraper.csproj --configuration Release
-        working-directory: InitialInfoScraper
 
       - name: Instalar Chromium y dependencias
         run: pwsh ./bin/Release/net10.0/playwright.ps1 install --with-deps chromium
-        working-directory: InitialInfoScraper
 
       - name: Ejecutar scraper
         run: dotnet run --no-build --configuration Release --project InitialInfoScraper.csproj
-        working-directory: InitialInfoScraper
 
       - name: Publicar productos.json
         uses: actions/upload-artifact@v4
         with:
           name: productos
-          path: InitialInfoScraper/productos.json
+          path: productos.json
           if-no-files-found: error
