@@ -2,8 +2,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Playwright;
 
-const int maxAttempts = 3;
-// var productDirectory = FindProductDirectory();
 var inputPath = Path.Combine(Environment.CurrentDirectory, "productos.json");
 var outputPath = Path.Combine(Environment.CurrentDirectory, "productos_completos.json");
 var jsonOptions = new JsonSerializerOptions
@@ -49,44 +47,26 @@ for (var index = 0; index < products.Count; index++)
     var product = products[index];
     product.Sku = null;
 
-    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    await page.GotoAsync(product.Url, new PageGotoOptions
     {
-        try
-        {
-            await page.GotoAsync(product.Url, new PageGotoOptions
-            {
-                WaitUntil = WaitUntilState.DOMContentLoaded,
-                Timeout = 30_000
-            });
+        WaitUntil = WaitUntilState.DOMContentLoaded,
+        Timeout = 30_000
+    });
 
-            await skuLocator.WaitForAsync(new LocatorWaitForOptions
-            {
-                State = WaitForSelectorState.Attached,
-                Timeout = 30_000
-            });
+    await skuLocator.WaitForAsync(new LocatorWaitForOptions
+    {
+        State = WaitForSelectorState.Attached,
+        Timeout = 30_000
+    });
 
-            var sku = (await skuLocator.InnerTextAsync()).Trim();
+    var sku = (await skuLocator.InnerTextAsync()).Trim();
 
-            if (string.IsNullOrWhiteSpace(sku))
-            {
-                throw new InvalidOperationException("La página devolvió un SKU vacío.");
-            }
-
-            product.Sku = sku;
-            break;
-        }
-        catch (Exception exception) when (
-            exception is PlaywrightException or InvalidOperationException or TimeoutException)
-        {
-            Console.Error.WriteLine(
-                $"Intento {attempt}/{maxAttempts} fallido para {product.Url}: {exception.Message}");
-
-            if (attempt < maxAttempts)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(attempt));
-            }
-        }
+    if (string.IsNullOrWhiteSpace(sku))
+    {
+        throw new InvalidOperationException("La página devolvió un SKU vacío.");
     }
+
+    product.Sku = sku;
 
     if (product.Sku is null)
     {
@@ -105,7 +85,9 @@ var outputJson = JsonSerializer.Serialize(products, new JsonSerializerOptions
 {
     WriteIndented = true
 });
+
 await File.WriteAllTextAsync(outputPath, outputJson);
+
 Console.WriteLine($"Archivo JSON guardado en: {outputPath}");
 
 if (missingSkus.Count > 0)
@@ -116,29 +98,6 @@ if (missingSkus.Count > 0)
 }
 
 Console.WriteLine($"SKU obtenidos: {products.Count}/{products.Count}");
-
-static string FindProductDirectory()
-{
-    var searchDirectories = new[]
-    {
-        new DirectoryInfo(Environment.CurrentDirectory),
-        new DirectoryInfo(AppContext.BaseDirectory)
-    };
-
-    foreach (var startDirectory in searchDirectories)
-    {
-        for (var directory = startDirectory; directory is not null; directory = directory.Parent)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "productos.json")))
-            {
-                return directory.FullName;
-            }
-        }
-    }
-
-    throw new FileNotFoundException(
-        "No se encontró productos.json en el directorio actual ni en los directorios del programa.");
-}
 
 public sealed class Producto
 {
