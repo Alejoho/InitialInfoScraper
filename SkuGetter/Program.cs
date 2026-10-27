@@ -86,17 +86,39 @@ async ValueTask ProcessProduct(Producto product, CancellationToken token)
 
     product.Sku = null;
 
-    await page.GotoAsync(product.Url, new PageGotoOptions
-    {
-        WaitUntil = WaitUntilState.DOMContentLoaded,
-        Timeout = 30_000
-    });
+    bool shouldRetry = false;
+    int retries = 0;
 
-    await skuLocator.WaitForAsync(new LocatorWaitForOptions
+    do
     {
-        State = WaitForSelectorState.Attached,
-        Timeout = 30_000
-    });
+        try
+        {
+            await page.GotoAsync(product.Url, new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.DOMContentLoaded,
+                Timeout = 30_000
+            });
+
+            await skuLocator.WaitForAsync(new LocatorWaitForOptions
+            {
+                State = WaitForSelectorState.Attached,
+                Timeout = 40_000
+            });
+
+            shouldRetry = false;
+        }
+        catch (TimeoutException)
+        {
+            shouldRetry = true;
+            retries++;
+            Console.WriteLine($"A timeout ocurred waiting for product {product.Nombre} con url {product.Url}. Retry #{retries}");
+
+            if (retries > 4)
+            {
+                throw;
+            }
+        }
+    } while (shouldRetry);
 
     token.ThrowIfCancellationRequested();
 
