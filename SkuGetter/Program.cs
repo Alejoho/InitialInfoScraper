@@ -89,7 +89,7 @@ async ValueTask ProcessProduct(Producto product, CancellationToken token)
     var response = await page.GotoAsync(product.Url, new PageGotoOptions
     {
         WaitUntil = WaitUntilState.DOMContentLoaded,
-        Timeout = 30_000
+        Timeout = 40_000
     });
 
     System.Console.WriteLine(response?.Status);
@@ -97,7 +97,7 @@ async ValueTask ProcessProduct(Producto product, CancellationToken token)
     await skuLocator.WaitForAsync(new LocatorWaitForOptions
     {
         State = WaitForSelectorState.Attached,
-        Timeout = 40_000
+        Timeout = 60_000
     });
 
     token.ThrowIfCancellationRequested();
