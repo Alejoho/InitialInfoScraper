@@ -86,23 +86,46 @@ async ValueTask ProcessProduct(Producto product, CancellationToken token)
 
     product.Sku = null;
 
-    var response = await page.GotoAsync(product.Url, new PageGotoOptions
+    try
     {
-        WaitUntil = WaitUntilState.DOMContentLoaded,
-        Timeout = 30_000
-    });
+        var response = await page.GotoAsync(product.Url, new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.DOMContentLoaded,
+            Timeout = 30_000
+        });
 
-    if (response?.Status == 404)
+        if (response?.Status == 404)
+        {
+            Console.WriteLine($"Page not found for product {product.Nombre} con url {product.Url}.");
+            return;
+        }
+        else if (response?.Status is < 200 or >= 300)
+        {
+            throw new Exception("The response from a page was other than 404 or any 2xx.");
+        }
+    }
+    catch (TimeoutException)
     {
-        Console.WriteLine($"Page not found for product {product.Nombre} con url {product.Url}.");
+        Console.Error.WriteLine($"A timeout ocurred navigating to url {product.Url} para el producto {product.Nombre}.");
         return;
     }
 
-    await skuLocator.WaitForAsync(new LocatorWaitForOptions
+
+
+    try
     {
-        State = WaitForSelectorState.Attached,
-        Timeout = 40_000
-    });
+        await skuLocator.WaitForAsync(new LocatorWaitForOptions
+        {
+            State = WaitForSelectorState.Attached,
+            Timeout = 40_000
+        });
+    }
+    catch (TimeoutException)
+    {
+        Console.Error.WriteLine($"A timeout ocurred waiting for selector in product {product.Nombre} con url {product.Url}.");
+        return;
+    }
+
 
     token.ThrowIfCancellationRequested();
 
