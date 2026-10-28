@@ -7,7 +7,7 @@ var products = new List<Producto>();
 
 using var playwright = await Playwright.CreateAsync();
 await using var browser = await playwright.Chromium.LaunchAsync(
-    new BrowserTypeLaunchOptions { Headless = true });
+    new BrowserTypeLaunchOptions { Headless = true, SlowMo = 5_000 });
 
 var page = await browser.NewPageAsync();
 
