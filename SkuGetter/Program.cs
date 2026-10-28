@@ -57,7 +57,7 @@ if (productsToProcess.Any(product => string.IsNullOrWhiteSpace(product.Url) ||
 
 using var playwright = await Playwright.CreateAsync();
 await using var browser = await playwright.Chromium.LaunchAsync(
-    new BrowserTypeLaunchOptions { Headless = true });
+    new BrowserTypeLaunchOptions { Headless = true, SlowMo = 1_000 });
 
 var context = await browser.NewContextAsync();
 
