@@ -104,27 +104,27 @@ static async Task ScrapePagesAsync(
         await page.EvaluateAsync(
             "window.scrollTo(0, 1000)");
 
-        var pagination = page.Locator("button[class*='fetchMoreOpButton']");
-        await pagination.WaitForAsync(new LocatorWaitForOptions
+        var paginationLocator = page.Locator("button[class*='fetchMoreOpButton']");
+        await paginationLocator.WaitForAsync(new LocatorWaitForOptions
         {
             State = WaitForSelectorState.Visible,
             Timeout = 30_000
         });
 
-        await pagination.ScrollIntoViewIfNeededAsync();
+        await paginationLocator.ScrollIntoViewIfNeededAsync();
 
-        var cards = page.Locator(productSelector);
+        var cardsLocator = page.Locator(productSelector);
 
-        var cardLocators = await cards.AllAsync();
+        var cardLocators = await cardsLocator.AllAsync();
 
         System.Console.WriteLine(cardLocators.Count);
 
-        foreach (var card in cardLocators)
+        foreach (var cardLocator in cardLocators)
         {
-            var name = await card.GetAttributeAsync("data-cnstrc-item-name");
+            var name = await cardLocator.GetAttributeAsync("data-cnstrc-item-name");
             if (string.IsNullOrWhiteSpace(name))
             {
-                var productName = card.Locator(".vtex-product-summary-2-x-productBrand");
+                var productName = cardLocator.Locator(".vtex-product-summary-2-x-productBrand");
 
                 if (await productName.CountAsync() > 0)
                 {
@@ -132,7 +132,7 @@ static async Task ScrapePagesAsync(
                 }
             }
 
-            var brandLocator = card.Locator(".vtex-product-summary-2-x-productBrandName");
+            var brandLocator = cardLocator.Locator(".vtex-product-summary-2-x-productBrandName");
             await brandLocator.WaitForAsync(
                 new LocatorWaitForOptions
                 {
@@ -142,7 +142,7 @@ static async Task ScrapePagesAsync(
                 ? await brandLocator.InnerTextAsync()
                 : string.Empty;
 
-            var href = await card
+            var href = await cardLocator
                 .Locator("a.vtex-product-summary-2-x-clearLink")
                 .GetAttributeAsync("href");
             var url = string.IsNullOrWhiteSpace(href)
